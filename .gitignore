@@ -1,0 +1,102 @@
+# ============================================
+#   MCAP .gitignore
+# ============================================
+
+# ---------- Environment & Runtime ----------
+# Secrets and local configuration
+.env
+.env.local
+.env.*.local
+
+# SQLite database (runtime data)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ---------- Build Output ----------
+/dist
+/build
+*.tsbuildinfo
+
+# ---------- Dependencies ----------
+/node_modules
+/webpanel/node_modules
+
+# ---------- Logs ----------
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ---------- Testing & Coverage ----------
+/coverage
+/.nyc_output
+
+# ---------- IDE & Editors ----------
+# JetBrains (WebStorm, IntelliJ, etc.)
+/.idea
+*.iml
+*.iws
+*.ipr
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Other editors
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.sublime-project
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ---------- OS Files ----------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ---------- Temporary Files ----------
+.temp
+.tmp
+*.tmp
+*.bak
+*.swp
+*~
+
+# ---------- Diagnostic Reports ----------
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# ---------- Vite / Frontend ----------
+*.timestamp-*.mjs
+webpanel/dist
+webpanel/dist-ssr
+webpanel/coverage
+webpanel/.eslintcache
+webpanel/__screenshots__/
+
+# ---------- Internal Notes ----------
+# Project-specific internal documents (not for open source)
+MCAP业务细节.txt
