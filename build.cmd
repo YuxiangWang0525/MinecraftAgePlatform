@@ -55,7 +55,7 @@ echo ========================================
 echo.
 echo   Output:  dist\
 echo   Start:   node --env-file=.env dist\main.js
-echo   URL:     http://localhost:3000 (or configured APP_URL)
+echo   URL:     http://localhost:6227 (or configured APP_URL)
 echo.
 
 endlocal

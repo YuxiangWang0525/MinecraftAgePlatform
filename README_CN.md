@@ -79,7 +79,13 @@ chmod +x build.sh
 node --env-file=.env dist/main.js
 ```
 
-服务默认监听 `3000` 端口，可通过 `.env` 中的 `PORT` 修改。访问 `http://localhost:3000` 即可打开 Web 面板。
+服务默认监听 `6227` 端口，可通过 `.env` 中的 `PORT` 修改。访问 `http://localhost:6227` 即可打开 Web 面板。
+
+或者使用包管理器提供的一键脚本（自动构建 + 启动）：
+
+```bash
+pnpm start:service
+```
 
 ---
 
@@ -89,8 +95,8 @@ node --env-file=.env dist/main.js
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `APP_URL` | `http://localhost:3000` | MCAP 对外公开访问地址，用于生成游戏账号绑定链接 |
-| `PORT` | `3000` | 后端服务监听端口 |
+| `APP_URL` | `http://localhost:6227` | MCAP 对外公开访问地址，用于生成游戏账号绑定链接 |
+| `PORT` | `6227` | 后端服务监听端口 |
 | `DB_PATH` | `mcap.db` | SQLite 数据库文件路径，相对于项目根目录 |
 | `JWT_SECRET` | `mcap-jwt-secret-key` | JWT 签名密钥，**生产环境必须更换为强随机字符串** |
 
@@ -105,6 +111,80 @@ node --env-file=.env dist/main.js
 ---
 
 ## 部署指南
+
+### Docker Compose 部署（推荐）
+
+项目根目录提供了 `docker-compose.yml`，这是**最简单、最推荐**的部署方式——一条命令即可完成镜像构建、端口映射、数据持久化、环境变量注入和健康检查。
+
+**1. 准备配置：**
+
+```bash
+cp .env.example .env
+# 编辑 .env，尤其是 JWT_SECRET（请更换为强随机字符串）
+nano .env
+```
+
+**2. 启动服务：**
+
+```bash
+docker compose up -d --build
+```
+
+执行后，Docker Compose 会自动：
+- 构建多阶段镜像（前后端在 builder 阶段编译完成）
+- 创建命名卷 `mcap-data` 用于 SQLite 数据持久化
+- 将宿主机 `6227` 端口（可通过 `.env` 中的 `PORT` 调整）映射到容器
+- 以自动重启策略和健康检查启动容器
+
+**3. 查看服务状态：**
+
+```bash
+docker compose ps
+docker compose logs -f mcap
+```
+
+**4. 停止 / 重启 / 升级：**
+
+```bash
+docker compose down          # 停止并移除容器（数据卷会保留）
+docker compose restart       # 重启容器
+docker compose pull          # （如使用预构建镜像）拉取最新版本
+docker compose up -d --build # 重新构建并重建容器
+```
+
+**5. 自定义端口或环境变量：**
+
+直接编辑 `docker-compose.yml`，或在项目根目录的 `.env` 中覆盖变量。Compose 会自动替换 `${PORT:-6227}`、`${JWT_SECRET:-...}` 等占位。
+
+> **提示：** 容器首次启动后，请访问 Web 面板并修改默认管理员密码（`admin` / `mcapadmin`）。
+
+### Docker 手动部署（`docker run`）
+
+如果不使用 Compose，也可以直接构建并运行镜像：
+
+```bash
+docker build -t mcap:latest .
+docker run -d \
+  --name mcap \
+  -p 6227:6227 \
+  -v mcap-data:/app/data \
+  -e APP_URL=https://mcap.your-domain.com \
+  -e JWT_SECRET=请更换为强随机字符串 \
+  mcap:latest
+```
+
+数据持久化：SQLite 数据库存放在 `/app/data` 卷中。请务必挂载命名卷（或宿主机目录），避免容器重建后数据丢失。
+
+环境变量可以通过 `-e KEY=VALUE` 传入，也可以通过挂载 `.env` 文件的方式提供：
+
+```bash
+docker run -d \
+  --name mcap \
+  -p 6227:6227 \
+  -v mcap-data:/app/data \
+  -v $(pwd)/.env:/app/.env:ro \
+  mcap:latest
+```
 
 ### Windows 手动部署
 
@@ -169,7 +249,7 @@ node --env-file=.env dist/main.js
        server_name mcap.your-domain.com;
 
        location / {
-           proxy_pass http://127.0.0.1:3000;
+           proxy_pass http://127.0.0.1:6227;
            proxy_set_header Host $host;
            proxy_set_header X-Real-IP $remote_addr;
            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -198,30 +278,22 @@ node --env-file=.env dist/main.js
    - 项目目录选择 `/opt/minecraftageplatform`；
    - 启动文件填写 `dist/main.js`；
    - 启动命令设置为 `node --env-file=.env dist/main.js`；
-   - 服务端口设置为 `3000`。
+   - 服务端口设置为 `6227`。
 
-4. **可选：通过 Docker 部署**（使用 1Panel 容器管理功能）。在项目根目录创建 `Dockerfile`：
+4. **可选：通过 Docker Compose 部署**（推荐——直接使用项目根目录的 `docker-compose.yml`）：
 
-   ```dockerfile
-   FROM node:22-slim
-   WORKDIR /app
-   COPY package.json pnpm-lock.yaml ./
-   RUN npm install -g pnpm && pnpm install --frozen-lockfile --prod
-   COPY webpanel/package.json webpanel/pnpm-lock.yaml ./webpanel/
-   RUN cd webpanel && pnpm install --frozen-lockfile --prod
-   COPY . .
-   RUN cd webpanel && npx vite build && npx nest build && \
-       rm -rf /app/dist/public && cp -r webpanel/dist /app/dist/public
-   EXPOSE 3000
-   CMD ["node", "--env-file=.env", "dist/main.js"]
+   ```bash
+   cd /opt/minecraftageplatform
+   cp .env.example .env && nano .env
+   docker compose up -d --build
    ```
 
-   构建镜像后，在 1Panel 中进入 **容器** → **创建容器**，映射 `3000` 端口，并通过挂载卷提供 `.env` 配置。
+   在 1Panel 中进入 **容器** → **编排** → **创建编排**，指向 `/opt/minecraftageplatform/docker-compose.yml`。
 
 5. **配置反向代理**：
    - 进入 **网站** → **创建网站** → **反向代理**；
    - 域名填写 `mcap.your-domain.com`；
-   - 代理地址填写 `http://127.0.0.1:3000`；
+   - 代理地址填写 `http://127.0.0.1:6227`；
    - 使用 Let's Encrypt 申请证书并启用 HTTPS。
 
 ### 宝塔面板（Linux）
@@ -267,7 +339,7 @@ node --env-file=.env dist/main.js
    - 域名填写 `mcap.your-domain.com`；
    - PHP 版本选择 **纯静态**，本项目不需要 PHP；
    - 创建后进入 **设置** → **反向代理** → **添加反向代理**；
-   - 目标 URL 填写 `http://127.0.0.1:3000`；
+   - 目标 URL 填写 `http://127.0.0.1:6227`；
    - 使用 Let's Encrypt 申请证书并启用 **SSL**。
 
 ---
@@ -394,6 +466,9 @@ minecraftageplatform/
 ├── .env.example            # 环境配置模板
 ├── build.cmd               # Windows 构建脚本
 ├── build.sh                # Linux 构建脚本
+├── Dockerfile              # 多阶段 Docker 构建文件
+├── docker-compose.yml      # Docker Compose 部署（推荐）
+├── .dockerignore           # Docker 构建上下文排除列表
 └── package.json
 ```
 
@@ -411,6 +486,9 @@ pnpm start:dev
 
 # 在另一个终端启动前端开发服务器
 cd webpanel && npx vite
+
+# 一键构建并启动生产服务
+pnpm start:service
 
 # 运行测试
 pnpm test

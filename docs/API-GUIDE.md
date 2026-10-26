@@ -75,7 +75,7 @@ Header: x-api-key: mcap_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 | 环境 | 地址 |
 |------|------|
-| 开发环境 | `http://localhost:3000` |
+| 开发环境 | `http://localhost:6227` |
 | 生产环境 | 由管理员提供，格式 `https://mcap.your-domain.com` |
 
 所有游戏服务端接口基础路径为 `/api/server`。
@@ -155,7 +155,7 @@ GET /api/server/ping
 **请求示例**：
 
 ```bash
-curl http://localhost:3000/api/server/ping
+curl http://localhost:6227/api/server/ping
 ```
 
 **响应**：
@@ -190,14 +190,14 @@ GET /api/server/registerUserID?uid={uid}&gameName={gameName}
 
 ```bash
 curl -H "x-api-key: mcap_xxxxxxxx" \
-  "http://localhost:3000/api/server/registerUserID?uid=MC_10086&gameName=Steve"
+  "http://localhost:6227/api/server/registerUserID?uid=MC_10086&gameName=Steve"
 ```
 
 **响应（首次注册，未绑定）**：
 
 ```json
 {
-  "bindLink": "http://localhost:3000/#/user/bind-game?code=A1B2C3D4&uid=MC_10086&gameName=Steve",
+  "bindLink": "http://localhost:6227/#/user/bind-game?code=A1B2C3D4&uid=MC_10086&gameName=Steve",
   "bindCode": "A1B2C3D4",
   "uid": "MC_10086",
   "gameName": "Steve",
@@ -210,7 +210,7 @@ curl -H "x-api-key: mcap_xxxxxxxx" \
 
 ```json
 {
-  "bindLink": "http://localhost:3000/#/user/bind-game?uid=MC_10086",
+  "bindLink": "http://localhost:6227/#/user/bind-game?uid=MC_10086",
   "bindCode": null,
   "alreadyBound": true,
   "message": "该UID已绑定到用户"
@@ -258,7 +258,7 @@ GET /api/server/getUserInfo?uid={uid}
 
 ```bash
 curl -H "x-api-key: mcap_xxxxxxxx" \
-  "http://localhost:3000/api/server/getUserInfo?uid=MC_10086"
+  "http://localhost:6227/api/server/getUserInfo?uid=MC_10086"
 ```
 
 **响应（已绑定且已实名）**：
