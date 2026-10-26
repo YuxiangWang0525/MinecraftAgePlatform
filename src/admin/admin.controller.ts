@@ -57,6 +57,12 @@ export class AdminController {
     return this.adminService.unlockUserVerify(Number(id));
   }
 
+  /** 取消用户实名认证 */
+  @Post('users/:id/revoke-verify')
+  revokeUserVerify(@Param('id') id: string) {
+    return this.adminService.revokeUserVerify(Number(id));
+  }
+
   /** 获取认证熔断设置 */
   @Get('verify-settings')
   getVerifySettings() {

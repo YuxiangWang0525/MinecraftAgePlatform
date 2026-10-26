@@ -54,6 +54,10 @@ export function unlockUserVerify(userId: number) {
   return request.post(`/admin/users/${userId}/unlock-verify`)
 }
 
+export function revokeUserVerify(userId: number) {
+  return request.post(`/admin/users/${userId}/revoke-verify`)
+}
+
 // ===== 站点设置 =====
 
 export function getSiteSettings() {
