@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { Table, Card, Button, Tag, Space, Typography, message, Popconfirm } from 'ant-design-vue'
 import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
-import { getUsers, deleteUser, unlockUserVerify } from '@/api/admin'
+import { getUsers, deleteUser, unlockUserVerify, revokeUserVerify } from '@/api/admin'
 
 const router = useRouter()
 const loading = ref(false)
@@ -51,6 +51,16 @@ async function handleUnlock(userId: number) {
   try {
     await unlockUserVerify(userId)
     message.success('已解除认证锁定')
+    await fetchUsers()
+  } catch (err: any) {
+    message.error(err.response?.data?.message || '操作失败')
+  }
+}
+
+async function handleRevoke(id: number) {
+  try {
+    await revokeUserVerify(id)
+    message.success('已取消该用户的实名认证')
     await fetchUsers()
   } catch (err: any) {
     message.error(err.response?.data?.message || '操作失败')
@@ -110,6 +120,17 @@ async function handleUnlock(userId: number) {
             >
               <Button type="link" size="small" style="color: #faad14">
                 <Icon icon="mdi:lock-open" /> 解锁
+              </Button>
+            </Popconfirm>
+            <Popconfirm
+              v-if="record.isVerified"
+              title="确认取消该用户的实名认证？此操作将清除所有认证信息。"
+              ok-text="确认取消"
+              ok-type="danger"
+              @confirm="handleRevoke(record.id)"
+            >
+              <Button type="link" size="small" danger>
+                <Icon icon="mdi:account-remove" /> 取消认证
               </Button>
             </Popconfirm>
             <Popconfirm

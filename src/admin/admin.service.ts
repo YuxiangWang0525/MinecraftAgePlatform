@@ -124,6 +124,40 @@ export class AdminService {
   }
 
   /**
+   * 取消用户实名认证，清除所有认证信息
+   */
+  async revokeUserVerify(userId: number) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+    if (!user.isVerified) {
+      throw new BadRequestException('该用户尚未完成实名认证');
+    }
+
+    await this.userRepository.update(userId, {
+      isVerified: false,
+      realName: undefined,
+      idNumber: undefined,
+      birthDate: undefined,
+      isMinor: true,
+      ageRange: AgeRange.FOUR_PLUS,
+      verifyAttempts: 0,
+      verifyLocked: false,
+    });
+
+    // Explicitly set nullable fields to null via query builder
+    await this.userRepository
+      .createQueryBuilder()
+      .update(User)
+      .set({ realName: () => 'NULL', idNumber: () => 'NULL', birthDate: () => 'NULL' })
+      .where('id = :id', { id: userId })
+      .execute();
+
+    return { message: '已取消该用户的实名认证' };
+  }
+
+  /**
    * 获取当前熔断阈值设置
    */
   async getVerifySettings() {
