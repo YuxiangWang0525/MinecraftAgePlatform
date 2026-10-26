@@ -77,7 +77,13 @@ chmod +x build.sh
 node --env-file=.env dist/main.js
 ```
 
-The server starts on the configured `PORT` (default: `3000`). Visit `http://localhost:3000` to access the web panel.
+The server starts on the configured `PORT` (default: `6227`). Visit `http://localhost:6227` to access the web panel.
+
+Or use the package manager convenience script (builds + starts in one command):
+
+```bash
+pnpm start:service
+```
 
 ---
 
@@ -87,8 +93,8 @@ All settings are in the `.env` file (copied from `.env.example` on first build):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `APP_URL` | `http://localhost:3000` | Public-facing URL of your MCAP instance (used in binding links) |
-| `PORT` | `3000` | Port the server listens on |
+| `APP_URL` | `http://localhost:6227` | Public-facing URL of your MCAP instance (used in binding links) |
+| `PORT` | `6227` | Port the server listens on |
 | `DB_PATH` | `mcap.db` | SQLite database file path (relative to project root) |
 | `JWT_SECRET` | `mcap-jwt-secret-key` | **Change this in production!** Secret key for JWT signing |
 
@@ -103,6 +109,80 @@ All settings are in the `.env` file (copied from `.env.example` on first build):
 ---
 
 ## Deployment Guides
+
+### Docker Compose (recommended)
+
+A `docker-compose.yml` is provided at the project root. This is the **simplest and recommended** way to deploy MCAP — it handles image building, port mapping, data persistence, environment variables, and health checks in a single command.
+
+**1. Prepare configuration:**
+
+```bash
+cp .env.example .env
+# Edit .env — especially JWT_SECRET (use a strong random string)
+nano .env
+```
+
+**2. Start the service:**
+
+```bash
+docker compose up -d --build
+```
+
+That's it! Docker Compose will:
+- Build the multi-stage image (frontend + backend compiled inside the builder)
+- Create a named volume `mcap-data` for SQLite persistence
+- Map host port `6227` (configurable via `PORT` in `.env`) to the container
+- Start the container with automatic restart policy and health check
+
+**3. Verify the service is running:**
+
+```bash
+docker compose ps
+docker compose logs -f mcap
+```
+
+**4. Stop / restart / upgrade:**
+
+```bash
+docker compose down          # stop and remove container (data volume is preserved)
+docker compose restart       # restart the container
+docker compose pull          # (if using a pre-built image) pull latest version
+docker compose up -d --build # rebuild and recreate container
+```
+
+**5. Customize ports or environment:**
+
+Edit `docker-compose.yml` or override values in a `.env` file at the project root. Compose substitutes variables like `${PORT:-6227}` and `${JWT_SECRET:-...}` from the host environment / `.env` file.
+
+> **Tip:** after the container starts for the first time, visit the web panel and change the default admin password (`admin` / `mcapadmin`).
+
+### Docker (manual `docker run`)
+
+If you prefer not to use Compose, you can build and run the image directly:
+
+```bash
+docker build -t mcap:latest .
+docker run -d \
+  --name mcap \
+  -p 6227:6227 \
+  -v mcap-data:/app/data \
+  -e APP_URL=https://mcap.your-domain.com \
+  -e JWT_SECRET=change-me-to-a-strong-random-string \
+  mcap:latest
+```
+
+Data persistence: the SQLite database is stored in the `/app/data` volume. Mount a named volume (or a host directory) so the data survives container recreation.
+
+Environment variables can be passed via `-e KEY=VALUE` flags, or by mounting a `.env` file:
+
+```bash
+docker run -d \
+  --name mcap \
+  -p 6227:6227 \
+  -v mcap-data:/app/data \
+  -v $(pwd)/.env:/app/.env:ro \
+  mcap:latest
+```
 
 ### Windows (Manual)
 
@@ -160,7 +240,7 @@ All settings are in the `.env` file (copied from `.env.example` on first build):
        server_name mcap.your-domain.com;
 
        location / {
-           proxy_pass http://127.0.0.1:3000;
+           proxy_pass http://127.0.0.1:6227;
            proxy_set_header Host $host;
            proxy_set_header X-Real-IP $remote_addr;
            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -187,30 +267,20 @@ All settings are in the `.env` file (copied from `.env.example` on first build):
    - Project directory: upload the MCAP source to `/opt/minecraftageplatform`
    - Startup file: `dist/main.js`
    - Run command: `node --env-file=.env dist/main.js`
-   - Port: `3000`
+   - Port: `6227`
 
-4. **Alternative: Deploy via Docker** (if using 1Panel's container management):
-   - Create a `Dockerfile` in the project root:
-     ```dockerfile
-     FROM node:22-slim
-     WORKDIR /app
-     COPY package.json pnpm-lock.yaml ./
-     RUN npm install -g pnpm && pnpm install --frozen-lockfile --prod
-     COPY webpanel/package.json webpanel/pnpm-lock.yaml ./webpanel/
-     RUN cd webpanel && pnpm install --frozen-lockfile --prod
-     COPY . .
-     RUN cd webpanel && npx vite build && npx nest build && \
-         rm -rf /app/dist/public && cp -r webpanel/dist /app/dist/public
-     EXPOSE 3000
-     CMD ["node", "--env-file=.env", "dist/main.js"]
-     ```
-   - In 1Panel, go to **Container** → **Create Container** → use the built image
-   - Map port 3000 and configure `.env` via volume mount
+4. **Alternative: Deploy via Docker Compose** (recommended — uses the `docker-compose.yml` provided at the project root):
+   ```bash
+   cd /opt/minecraftageplatform
+   cp .env.example .env && nano .env
+   docker compose up -d --build
+   ```
+   In 1Panel, go to **Container** → **Compose** → create a new compose project pointing at `/opt/minecraftageplatform/docker-compose.yml`.
 
 5. **Set up reverse proxy** in 1Panel:
    - Go to **Website** → **Create Website** → **Reverse Proxy**
    - Domain: `mcap.your-domain.com`
-   - Proxy target: `http://127.0.0.1:3000`
+   - Proxy target: `http://127.0.0.1:6227`
    - Enable HTTPS with Let's Encrypt
 
 ### BT Panel / 宝塔面板 (Linux) / aaPanel
@@ -253,7 +323,7 @@ All settings are in the `.env` file (copied from `.env.example` on first build):
    - Domain: `mcap.your-domain.com`
    - PHP version: **Pure static** (no PHP needed)
    - After creation, go to **Settings** → **Reverse Proxy** → **Add Reverse Proxy**
-   - Target URL: `http://127.0.0.1:3000`
+   - Target URL: `http://127.0.0.1:6227`
    - Enable **SSL** with Let's Encrypt certificate
 
 ---
@@ -379,6 +449,9 @@ minecraftageplatform/
 ├── .env.example            # Environment config template
 ├── build.cmd               # Windows build script
 ├── build.sh                # Linux build script
+├── Dockerfile              # Multi-stage Docker build
+├── docker-compose.yml      # Docker Compose deployment (recommended)
+├── .dockerignore           # Files excluded from the Docker context
 └── package.json
 ```
 
@@ -396,6 +469,9 @@ pnpm start:dev
 
 # Start frontend dev server (separate terminal)
 cd webpanel && npx vite
+
+# Build + start production server in one command
+pnpm start:service
 
 # Run tests
 pnpm test
